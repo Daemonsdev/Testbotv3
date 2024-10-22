@@ -2,38 +2,39 @@ const axios = require('axios');
 
 module.exports = {
   name: 'ai',
-  description: 'Ask a question to the Heru AI',
+  description: 'Ask a question or analyze an image using the Gemini AI',
   author: 'Heru',
   role: 1,
   async execute(senderId, args, pageAccessToken, sendMessage) {
     const prompt = args.join(' ');
 
     try {
+      // Check if the message contains an image attachment
       if (args.attachments) {
         let attachment_url = args.attachments[0].payload.url;
-        
-        // what if ganto
-        const imageResponse = {
-          attachment: {
-            type: 'image',
-            payload: {
-              url: attachment_url,
-              is_reusable: true
-            }
-          }
-        };
-        await sendMessage(senderId, imageResponse, pageAccessToken);
-        return; 
+
+        // Send the image for recognition using the Gemini API
+        const geminiApiUrl = `https://joshweb.click/gemini?prompt=${encodeURIComponent(prompt)}&url=${encodeURIComponent(attachment_url)}`;
+        const geminiResponse = await axios.get(geminiApiUrl);
+        const recognitionResult = geminiResponse.data.gemini || 'No recognition result available.';
+
+        const formattedResponse = 
+`🔍 | 𝙂𝙚𝙢𝙞𝙣𝙞'𝙨 𝙍𝙚𝙘𝙤𝙜𝙣𝙞𝙩𝙞𝙤𝙣:
+${recognitionResult}`;
+
+        await sendMessage(senderId, { text: formattedResponse }, pageAccessToken);
+        return;  // Stop further processing since the image was handled
       }
 
-      const apiUrl = `https://heru-ai-1kgm.vercel.app/heru?prompt=${encodeURIComponent(prompt)}`;
-      const response = await axios.get(apiUrl);
-      const text = response.data.response;
+      // If no image, process the text query with Heru AI
+      const heruApiUrl = `https://heru-ai-1kgm.vercel.app/heru?prompt=${encodeURIComponent(prompt)}`;
+      const heruResponse = await axios.get(heruApiUrl);
+      const textResponse = heruResponse.data.response;
 
       // Send the response, split into chunks if necessary
-      await sendResponseInChunks(senderId, text, pageAccessToken, sendMessage);
+      await sendResponseInChunks(senderId, textResponse, pageAccessToken, sendMessage);
     } catch (error) {
-      console.error('Error calling Heru AI API:', error);
+      console.error('Error during API call:', error);
       sendMessage(senderId, { text: 'Sorry, there was an error processing your request.' }, pageAccessToken);
     }
   }
@@ -69,4 +70,4 @@ function splitMessageIntoChunks(message, chunkSize) {
   }
 
   return chunks;
-}
+      }

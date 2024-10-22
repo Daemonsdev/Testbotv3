@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 module.exports = {
-  name: 'heru',
+  name: 'ai',
   description: 'Ask a question to the Heru AI',
   author: 'Heru',
   role: 1,
@@ -35,7 +35,7 @@ module.exports = {
       await sendResponseInChunks(senderId, text, pageAccessToken, sendMessage);
     } catch (error) {
       console.error('Error calling Heru AI API:', error);
-      sendMessage(senderId, { text: 'Sorry, there was an error processing your request.' }, pageAccessToken);
+      sendMessage(senderId, { text: 'Invalid command\nNote: Dont use ai instead question directly thank you!!' }, pageAccessToken);
     }
   }
 };

@@ -2,7 +2,7 @@ const axios = require('axios');
 const { sendMessage } = require('../handles/sendMessage');
 
 module.exports = {
-  name: 'heru',
+  name: 'ai',
   description: 'Ask a question to the Heru AI',
   author: 'Heru',
   role: 1,

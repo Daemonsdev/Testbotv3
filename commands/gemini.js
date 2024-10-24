@@ -1,71 +1,84 @@
-const axios = require('axios');
+const axios = require("axios");
+const { sendMessage } = require('../handles/sendMessage');
 
 module.exports = {
-  name: 'gemini',
-  description: 'Ask a question to Gemini',
-  author: 'Deku (rest api)',
-  role: 1,
-  async execute(senderId, args, pageAccessToken, sendMessage, replyTo, attachments) {
-    const prompt = args.join(' ');
-    let imageUrl = '';
+  name: "gemini",
+  description: "Interact with Google Gemini for image recognition and text queries.",
+  author: "Churchill",
 
-    // Check if an attachment (photo/image) exists and extract the URL
-    if (attachments && attachments.length > 0) {
-      const imageAttachment = attachments.find(att => att.type === 'image');
-      if (imageAttachment) {
-        imageUrl = imageAttachment.payload.url; // Assuming the image URL is here
-      }
+  async execute(chilli, pogi, kalamansi, event) {
+    const kalamansiPrompt = pogi.join(" ");
+    
+    if (!kalamansiPrompt) {
+      return sendMessage(chilli, { text: `Please enter your question!\n\nExample: gemini what is love?` }, kalamansi);
     }
 
-    // If both prompt and imageUrl are missing, send a message asking for input
-    if (!prompt && !imageUrl) {
-      sendMessage(senderId, { text: 'Please provide an image or prompt.' }, pageAccessToken, replyTo);
-      return;
-    }
+    sendMessage(chilli, { text: "Please wait... 🔎" }, kalamansi);
 
     try {
-      // Construct API URL based on provided prompt and imageUrl
-      const apiUrl = `https://joshweb.click/gemini?prompt=${encodeURIComponent(prompt)}&url=${encodeURIComponent(imageUrl || '')}`;
-      const response = await axios.get(apiUrl);
-      const text = response.data.gemini;
+      let imageUrl = "";
 
-      // Send the response, split into chunks if necessary
-      await sendResponseInChunks(senderId, text, pageAccessToken, sendMessage, replyTo);
+      if (event.message.reply_to && event.message.reply_to.mid) {
+        imageUrl = await getRepliedImage(event.message.reply_to.mid, kalamansi);
+      } 
+      else if (event.message?.attachments && event.message.attachments[0]?.type === 'image') {
+        imageUrl = event.message.attachments[0].payload.url;
+      }
+
+      const apiUrl = `https://joshweb.click/gemini`;
+
+      const chilliResponse = await handleImageRecognition(apiUrl, kalamansiPrompt, imageUrl);
+      const result = chilliResponse.gemini;
+
+      sendLongMessage(chilli, result, kalamansi);
+
     } catch (error) {
-      console.error('Error calling Gemini API:', error);
-      sendMessage(senderId, { text: 'Sorry, there was an error processing your request.' }, pageAccessToken, replyTo);
+      console.error("Error in Gemini command:", error);
+      sendMessage(chilli, { text: `Error: ${error.message || "Something went wrong."}` }, kalamansi);
     }
   }
 };
 
-async function sendResponseInChunks(senderId, text, pageAccessToken, sendMessage, replyTo) {
+async function handleImageRecognition(apiUrl, prompt, imageUrl) {
+  const { data } = await axios.get(apiUrl, {
+    params: {
+      prompt,
+      url: imageUrl || ""
+    }
+  });
+
+  return data;
+}
+
+async function getRepliedImage(mid, kalamansi) {
+  const { data } = await axios.get(`https://graph.facebook.com/v21.0/${mid}/attachments`, {
+    params: { access_token: kalamansi }
+  });
+
+  if (data && data.data.length > 0 && data.data[0].image_data) {
+    return data.data[0].image_data.url;
+  } else {
+    return "";
+  }
+}
+
+function sendLongMessage(chilli, text, kalamansi) {
   const maxMessageLength = 2000;
+  const delayBetweenMessages = 1000;
+
   if (text.length > maxMessageLength) {
     const messages = splitMessageIntoChunks(text, maxMessageLength);
-    for (const message of messages) {
-      await sendMessage(senderId, { text: message, reply_to: replyTo }, pageAccessToken);
-    }
+    sendMessage(chilli, { text: messages[0] }, kalamansi);
+
+    messages.slice(1).forEach((message, index) => {
+      setTimeout(() => sendMessage(chilli, { text: message }, kalamansi), (index + 1) * delayBetweenMessages);
+    });
   } else {
-    await sendMessage(senderId, { text, reply_to: replyTo }, pageAccessToken);
+    sendMessage(chilli, { text }, kalamansi);
   }
 }
 
 function splitMessageIntoChunks(message, chunkSize) {
-  const chunks = [];
-  let chunk = '';
-  const words = message.split(' ');
-
-  for (const word of words) {
-    if ((chunk + word).length > chunkSize) {
-      chunks.push(chunk.trim());
-      chunk = '';
-    }
-    chunk += `${word} `;
+  const regex = new RegExp(`.{1,${chunkSize}}`, 'g');
+  return message.match(regex);
   }
-
-  if (chunk) {
-    chunks.push(chunk.trim());
-  }
-
-  return chunks;
-      }

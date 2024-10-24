@@ -1,6 +1,5 @@
 const axios = require("axios");
 const { sendMessage } = require('../handles/sendMessage');
-const { handleMessage } = require('../handles/handleMessage');
 
 module.exports = {
   name: "vision",

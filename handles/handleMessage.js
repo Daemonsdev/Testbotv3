@@ -10,11 +10,8 @@ const prefix = '';
 const commandFiles = fs.readdirSync(path.join(__dirname, '../commands')).filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
   const command = require(`../commands/${file}`);
-  // Hide 'ai' command from help command
-  if (command.name.toLowerCase() !== 'ai') {
-    commands.set(command.name.toLowerCase(), command);
-    console.log(`Loaded command: ${command.name}`);
-  }
+  commands.set(command.name.toLowerCase(), command);
+  console.log(`Loaded command: ${command.name}`);
 }
 
 async function handleMessage(event, pageAccessToken) {
@@ -59,14 +56,20 @@ async function handleMessage(event, pageAccessToken) {
 
         await command.execute(senderId, args, pageAccessToken, event, imageUrl);
       } catch (error) {
-        console.error(`Error executing command "${commandName}":`, error);
-        sendMessage(senderId, { text: 'There was an error executing that command.' }, pageAccessToken);
+        if (commandName === 'ai') {
+          sendMessage(senderId, { text: "hello 👋🏻 how can I assist you today??\n\nNote: Dont use ai instead question directly, thank you!! 🤗" }, pageAccessToken);
+        } else {
+          console.error(`Error executing command "${commandName}":`, error);
+          sendMessage(senderId, { text: 'There was an error executing that command.' }, pageAccessToken);
+        }
       }
     } else {
-      if (commandName === 'ai') {
-        sendMessage(senderId, {
-          text: "hello 👋🏻 how can I assist you today??\n\nNote: Don't use ai, instead ask your question directly, thank you!! 🤗"
-        }, pageAccessToken);
+      if (commands.has('ai')) {
+        try {
+          await commands.get('ai').execute(senderId, [commandName, ...args], pageAccessToken, sendMessage);
+        } catch (error) {
+          sendMessage(senderId, { text: "hello 👋🏻 how can I assist you today??\n\nNote: Dont use ai instead question directly, thank you!! 🤗" }, pageAccessToken);
+        }
       } else {
         sendMessage(senderId, {
           text: `Unknown command: "${commandName}". Type "help" or click help below for a list of available commands.`,
@@ -109,4 +112,4 @@ async function getAttachments(mid, pageAccessToken) {
 }
 
 module.exports = { handleMessage };
-              
+  

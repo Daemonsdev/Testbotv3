@@ -5,17 +5,26 @@ module.exports = {
   description: 'Ask a question to Gemini',
   author: 'Deku (rest api)',
   role: 1,
-  async execute(senderId, args, pageAccessToken, sendMessage, replyTo, imageUrl) {
+  async execute(senderId, args, pageAccessToken, sendMessage, replyTo, attachments) {
     const prompt = args.join(' ');
+    let imageUrl = '';
 
-    // Check if both prompt and imageUrl are missing
+    // Check if an attachment (photo/image) exists and extract the URL
+    if (attachments && attachments.length > 0) {
+      const imageAttachment = attachments.find(att => att.type === 'image');
+      if (imageAttachment) {
+        imageUrl = imageAttachment.payload.url; // Assuming the image URL is here
+      }
+    }
+
+    // If both prompt and imageUrl are missing, send a message asking for input
     if (!prompt && !imageUrl) {
       sendMessage(senderId, { text: 'Please provide an image or prompt.' }, pageAccessToken, replyTo);
       return;
     }
 
     try {
-      // Construct API URL based on provided data
+      // Construct API URL based on provided prompt and imageUrl
       const apiUrl = `https://joshweb.click/gemini?prompt=${encodeURIComponent(prompt)}&url=${encodeURIComponent(imageUrl || '')}`;
       const response = await axios.get(apiUrl);
       const text = response.data.gemini;
@@ -59,4 +68,4 @@ function splitMessageIntoChunks(message, chunkSize) {
   }
 
   return chunks;
-                      }
+      }

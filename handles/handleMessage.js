@@ -1,6 +1,6 @@
-
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 const { sendMessage } = require('./sendMessage');
 
 const commands = new Map();
@@ -29,33 +29,9 @@ for (const file of commandFiles) {
     console.error(`${colors.red}Failed to load command from file: ${file}${colors.reset}`, error);
   }
 }
-const senderId = event.sender.id;
 
-  if (event.message && event.message.text) {
-    const messageText = event.message.text.trim();
-    console.log(`Received message: ${messageText}`);
-
-async function handleMessage(event, pageAccessToken) {
-  const senderId = event.sender.id;
-  const messageText = event.message.text.toLowerCase();
-
-  console.log(`${colors.blue}Received message: ${messageText}${colors.reset}`);
-  if (commands.has(commandName)) {
-      const command = commands.get(commandName);
-      try {
-        let imageUrl = '';
-        // Check if replying to a message with an attachment
-        if (event.message.reply_to && event.message.reply_to.mid) {
-          try {
-            imageUrl = await getAttachments(event.message.reply_to.mid, pageAccessToken);
-          } catch (error) {
-            console.error("Failed to get attachment:", error);
-            imageUrl = ''; // Ensure imageUrl is empty if it fails
-          }
-        } else if (event.message.attachments && event.message.attachments[0]?.type === 'image') {
-          imageUrl = event.message.attachments[0].payload.url;
-        }
-        async function getAttachments(mid, pageAccessToken) {
+// Function to get attachments
+async function getAttachments(mid, pageAccessToken) {
   if (!mid) {
     console.error("No message ID provided for getAttachments.");
     throw new Error("No message ID provided.");
@@ -76,43 +52,67 @@ async function handleMessage(event, pageAccessToken) {
     console.error("Error fetching attachments:", error);
     throw new Error("Failed to fetch attachments.");
   }
-        }
-        
+}
 
-  const args = messageText.split(' ');
-  const commandName = args.shift();
+// Handle incoming messages
+async function handleMessage(event, pageAccessToken) {
+  const senderId = event.sender.id;
 
-  console.log(`${colors.blue}Command name: ${commandName}${colors.reset}`);
+  if (event.message && event.message.text) {
+    const messageText = event.message.text.trim().toLowerCase();
+    const args = messageText.split(' ');
+    const commandName = args.shift();
 
-  const config = require('../config.json'); // Import config.json
+    console.log(`${colors.blue}Received message: ${messageText}${colors.reset}`);
+    console.log(`${colors.blue}Command name: ${commandName}${colors.reset}`);
 
-  if (commands.has(commandName)) {
-    const command = commands.get(commandName);
-    // Check if the sender is authorized to use the command
-    if (command.role === 0 && !config.adminId.includes(senderId)) {
-      sendMessage(senderId, { text: 'You are not authorized to use this command.' }, pageAccessToken);
-      return;
-    }
-    try {
-      await command.execute(senderId, args, pageAccessToken, sendMessage);
-    } catch (error) {
-      console.error(`${colors.red}Error executing command ${commandName}:${colors.reset}`, error);
-      sendMessage(senderId, { text: 'There was an error executing that command.' }, pageAccessToken);
-    }
-  } else {
-    console.log(`${colors.red}Command not found: ${commandName}${colors.reset}`);
-    // Default to 'universal' command
-    if (commands.has('ai')) {
+    const config = require('../config.json'); // Import config.json
+
+    if (commands.has(commandName)) {
+      const command = commands.get(commandName);
+
+      // Check if the sender is authorized to use the command
+      if (command.role === 0 && !config.adminId.includes(senderId)) {
+        sendMessage(senderId, { text: 'You are not authorized to use this command.' }, pageAccessToken);
+        return;
+      }
+
       try {
-        await commands.get('ai').execute(senderId, [commandName, ...args], pageAccessToken, sendMessage);
+        let imageUrl = '';
+
+        // Check if replying to a message with an attachment
+        if (event.message.reply_to && event.message.reply_to.mid) {
+          try {
+            imageUrl = await getAttachments(event.message.reply_to.mid, pageAccessToken);
+          } catch (error) {
+            console.error("Failed to get attachment:", error);
+          }
+        } else if (event.message.attachments && event.message.attachments[0]?.type === 'image') {
+          imageUrl = event.message.attachments[0].payload.url;
+        }
+
+        await command.execute(senderId, args, pageAccessToken, sendMessage, imageUrl);
       } catch (error) {
-        console.error(`${colors.red}Error executing default ai command:${colors.reset}`, error);
-        sendMessage(senderId, { text: 'There was an error processing your request.' }, pageAccessToken);
+        console.error(`${colors.red}Error executing command ${commandName}:${colors.reset}`, error);
+        sendMessage(senderId, { text: 'There was an error executing that command.' }, pageAccessToken);
       }
     } else {
-      sendMessage(senderId, { text: 'Command not found and no default action available.' }, pageAccessToken);
+      console.log(`${colors.red}Command not found: ${commandName}${colors.reset}`);
+
+      // Default to 'ai' command if available
+      if (commands.has('ai')) {
+        try {
+          await commands.get('ai').execute(senderId, [commandName, ...args], pageAccessToken, sendMessage);
+        } catch (error) {
+          console.error(`${colors.red}Error executing default ai command:${colors.reset}`, error);
+          sendMessage(senderId, { text: 'There was an error processing your request.' }, pageAccessToken);
+        }
+      } else {
+        sendMessage(senderId, { text: 'Command not found and no default action available.' }, pageAccessToken);
+      }
     }
   }
 }
 
 module.exports = { handleMessage };
+    

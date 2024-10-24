@@ -1,5 +1,5 @@
 const request = require('request');
-const axios = require('axios'); // Add axios for the typing indicator
+const axios = require('axios');
 
 async function typingIndicator(senderId, pageAccessToken) {
   try {
@@ -14,14 +14,11 @@ async function typingIndicator(senderId, pageAccessToken) {
   }
 }
 
-async function sendMessage(senderId, message, pageAccessToken) {
+function sendMessage(senderId, message, pageAccessToken) {
   if (!message || (!message.text && !message.attachment)) {
     console.error('Error: Message must provide valid text or attachment.');
     return;
   }
-
-  // Show typing indicator before sending the message
-  await typingIndicator(senderId, pageAccessToken);
 
   const payload = {
     recipient: { id: senderId },
@@ -35,6 +32,12 @@ async function sendMessage(senderId, message, pageAccessToken) {
   if (message.attachment) {
     payload.message.attachment = message.attachment;
   }
+
+  if (message.quick_replies) {
+    payload.message.quick_replies = message.quick_replies;
+  }
+
+  typingIndicator(senderId, pageAccessToken);
 
   request({
     url: 'https://graph.facebook.com/v13.0/me/messages',
@@ -52,4 +55,4 @@ async function sendMessage(senderId, message, pageAccessToken) {
   });
 }
 
-module.exports = { sendMessage };
+module.exports = { sendMessage, typingIndicator };

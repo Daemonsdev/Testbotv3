@@ -3,12 +3,20 @@ const axios = require('axios');
 module.exports = {
   name: 'gemini',
   description: 'Ask a question to Gemini',
-  author: 'Heru',
+  author: 'Deku (rest api)',
   role: 1,
   async execute(senderId, args, pageAccessToken, sendMessage, replyTo, imageUrl) {
     const prompt = args.join(' ');
+
+    // Check if both prompt and imageUrl are missing
+    if (!prompt && !imageUrl) {
+      sendMessage(senderId, { text: 'Please provide an image or prompt.' }, pageAccessToken, replyTo);
+      return;
+    }
+
     try {
-      const apiUrl = `https://joshweb.click/gemini?prompt=${encodeURIComponent(prompt)}&url=${encodeURIComponent(imageUrl)}`;
+      // Construct API URL based on provided data
+      const apiUrl = `https://joshweb.click/gemini?prompt=${encodeURIComponent(prompt)}&url=${encodeURIComponent(imageUrl || '')}`;
       const response = await axios.get(apiUrl);
       const text = response.data.gemini;
 
@@ -51,5 +59,4 @@ function splitMessageIntoChunks(message, chunkSize) {
   }
 
   return chunks;
-                             }
-    
+                      }

@@ -10,8 +10,11 @@ const prefix = '';
 const commandFiles = fs.readdirSync(path.join(__dirname, '../commands')).filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
   const command = require(`../commands/${file}`);
-  commands.set(command.name.toLowerCase(), command);
-  console.log(`Loaded command: ${command.name}`);
+  // Hide 'ai' command from help command
+  if (command.name.toLowerCase() !== 'ai') {
+    commands.set(command.name.toLowerCase(), command);
+    console.log(`Loaded command: ${command.name}`);
+  }
 }
 
 async function handleMessage(event, pageAccessToken) {
@@ -60,13 +63,10 @@ async function handleMessage(event, pageAccessToken) {
         sendMessage(senderId, { text: 'There was an error executing that command.' }, pageAccessToken);
       }
     } else {
-      if (commands.has('ai')) {
-        try {
-          await commands.get('ai').execute(senderId, [commandName, ...args], pageAccessToken, sendMessage);
-        } catch (error) {
-          console.error(`Error executing default ai command:`, error);
-          sendMessage(senderId, { text: 'There was an error processing your request.' }, pageAccessToken);
-        }
+      if (commandName === 'ai') {
+        sendMessage(senderId, {
+          text: "hello 👋🏻 how can I assist you today??\n\nNote: Don't use ai, instead ask your question directly, thank you!! 🤗"
+        }, pageAccessToken);
       } else {
         sendMessage(senderId, {
           text: `Unknown command: "${commandName}". Type "help" or click help below for a list of available commands.`,

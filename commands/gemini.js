@@ -2,8 +2,8 @@ const axios = require("axios");
 const { sendMessage } = require('../handles/sendMessage');
 
 module.exports = {
-  name: "vision",
-  description: "Interact with Google Gemini for image recognition and text queries.",
+  name: "gemini",
+  description: "Interact to gemini.",
   role: 1,
   author: "heru",
 
@@ -11,7 +11,7 @@ module.exports = {
     const kalamansiPrompt = pogi.join(" ");
     
     if (!kalamansiPrompt) {
-      return sendMessage(chilli, { text: `Please enter your question or image to analyz` }, kalamansi);
+      return sendMessage(chilli, { text: `Please enter your question.` }, kalamansi);
     }
 
     sendMessage(chilli, { text: "Please wait... 🔎" }, kalamansi);
@@ -19,11 +19,9 @@ module.exports = {
     try {
       let imageUrl = "";
 
-      // Safely check if event.message exists before accessing reply_to
-      if (event.message?.reply_to?.mid) {
+      if (event.message.reply_to && event.message.reply_to.mid) {
         imageUrl = await getRepliedImage(event.message.reply_to.mid, kalamansi);
       } 
-      // Safely check if attachments exist before accessing them
       else if (event.message?.attachments && event.message.attachments[0]?.type === 'image') {
         imageUrl = event.message.attachments[0].payload.url;
       }
@@ -84,5 +82,4 @@ function sendLongMessage(chilli, text, kalamansi) {
 function splitMessageIntoChunks(message, chunkSize) {
   const regex = new RegExp(`.{1,${chunkSize}}`, 'g');
   return message.match(regex);
-  }
-    
+}

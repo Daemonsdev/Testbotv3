@@ -1,6 +1,31 @@
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 const { sendMessage } = require('./sendMessage');
+
+// Import the getAttachments function
+async function getAttachments(mid, pageAccessToken) {
+  if (!mid) {
+    console.error("No message ID provided for getAttachments.");
+    throw new Error("No message ID provided.");
+  }
+
+  try {
+    const { data } = await axios.get(`https://graph.facebook.com/v21.0/${mid}/attachments`, {
+      params: { access_token: pageAccessToken }
+    });
+
+    if (data && data.data.length > 0 && data.data[0].image_data) {
+      return data.data[0].image_data.url;
+    } else {
+      console.error("No image found in the replied message.");
+      throw new Error("No image found in the replied message.");
+    }
+  } catch (error) {
+    console.error("Error fetching attachments:", error);
+    throw new Error("Failed to fetch attachments.");
+  }
+}
 
 const commands = new Map();
 
@@ -31,18 +56,29 @@ for (const file of commandFiles) {
 
 async function handleMessage(event, pageAccessToken) {
   const senderId = event.sender.id;
-  const messageText = event.message.text.toLowerCase();
+  const messageText = event.message.text ? event.message.text.toLowerCase() : null;
+  const mid = event.message.mid || null;  // Message ID for fetching attachments
 
   console.log(`${colors.blue}Received message: ${messageText}${colors.reset}`);
 
-  const args = messageText.split(' ');
+  const args = messageText ? messageText.split(' ') : [];
   const commandName = args.shift();
 
   console.log(`${colors.blue}Command name: ${commandName}${colors.reset}`);
 
   const config = require('../config.json'); // Import config.json
 
-  if (commands.has(commandName)) {
+  if (mid) {
+    try {
+      // Attempt to fetch image attachments if a message ID is provided
+      const imageUrl = await getAttachments(mid, pageAccessToken);
+      console.log(`${colors.blue}Image URL: ${imageUrl}${colors.reset}`);
+      sendMessage(senderId, { text: `Here is the image you requested: ${imageUrl}` }, pageAccessToken);
+    } catch (error) {
+      console.error(`${colors.red}Failed to retrieve attachments:${colors.reset}`, error);
+      sendMessage(senderId, { text: 'Could not retrieve any attachments.' }, pageAccessToken);
+    }
+  } else if (commands.has(commandName)) {
     const command = commands.get(commandName);
     // Check if the sender is authorized to use the command
     if (command.role === 0 && !config.adminId.includes(senderId)) {
@@ -72,3 +108,4 @@ async function handleMessage(event, pageAccessToken) {
 }
 
 module.exports = { handleMessage };
+                   

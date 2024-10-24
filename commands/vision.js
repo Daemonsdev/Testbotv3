@@ -11,7 +11,7 @@ module.exports = {
     const kalamansiPrompt = pogi.join(" ");
     
     if (!kalamansiPrompt) {
-      return sendMessage(chilli, { text: `Please enter your question!\n\nExample: gemini what is love?` }, kalamansi);
+      return sendMessage(chilli, { text: `Please enter your question or image to analyz` }, kalamansi);
     }
 
     sendMessage(chilli, { text: "Please wait... 🔎" }, kalamansi);
@@ -19,9 +19,11 @@ module.exports = {
     try {
       let imageUrl = "";
 
-      if (event.message.reply_to && event.message.reply_to.mid) {
+      // Safely check if event.message exists before accessing reply_to
+      if (event.message?.reply_to?.mid) {
         imageUrl = await getRepliedImage(event.message.reply_to.mid, kalamansi);
       } 
+      // Safely check if attachments exist before accessing them
       else if (event.message?.attachments && event.message.attachments[0]?.type === 'image') {
         imageUrl = event.message.attachments[0].payload.url;
       }
@@ -83,3 +85,4 @@ function splitMessageIntoChunks(message, chunkSize) {
   const regex = new RegExp(`.{1,${chunkSize}}`, 'g');
   return message.match(regex);
   }
+    

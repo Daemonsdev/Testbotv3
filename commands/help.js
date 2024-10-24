@@ -13,56 +13,45 @@ module.exports = {
 
     const commands = commandFiles.map((file, index) => {
       const command = require(path.join(commandsDir, file));
-      return {
-        title: command.name,
-        description: command.description,
-        payload: `${command.name.toUpperCase()}_PAYLOAD` // Assuming you handle payloads for commands
-      };
+      return ` | ${String(index + 1).padStart(2, '0')}. ${command.name}`;
     });
 
     const totalCommands = commandFiles.length;
-    const commandsPerPage = 5; // Number of commands per page
+    const commandsPerPage = 10;
     const totalPages = Math.ceil(totalCommands / commandsPerPage);
-    let page = parseInt(args[0], 10);
+    let page = parseInt(args[0], 10) || 1;
 
-    if (isNaN(page) || page < 1) {
-      page = 1;
-    }
-
-    if (args[0] && args[0].toLowerCase() === 'all') {
-      const helpMessage = `📋 | CMD List:\n🏷 Total Commands: ${totalCommands}\n\n${commands.map((cmd, index) => `${index + 1}. ${cmd.title} - ${cmd.description}`).join('\n')}`;
-
-      return sendMessage(senderId, { text: helpMessage }, pageAccessToken);
-    }
+    page = Math.max(1, Math.min(page, totalPages));
 
     const startIndex = (page - 1) * commandsPerPage;
-    const endIndex = startIndex + commandsPerPage;
-    const commandsForPage = commands.slice(startIndex, endIndex);
+    const endIndex = Math.min(startIndex + commandsPerPage, totalCommands);
 
-    if (commandsForPage.length === 0) {
-      return sendMessage(senderId, { text: `Invalid page number. There are only ${totalPages} pages.` }, pageAccessToken);
+    const paginatedCommands = commands.slice(startIndex, endIndex);
+
+    const helpMessage = `📖 𝙲𝚘𝚖𝚖𝚊𝚗𝚍 𝙻𝚒𝚜𝚝\n╭─────────────⭓\n${paginatedCommands.join('\n')}\n├─────────────⭓\n |◉ 𝙿𝚊𝚐𝚎𝚜 ${String(page).padStart(2, '0')} of ${String(totalPages).padStart(2, '0')}\n╰─────────────⭓`;
+
+    const quickReplies = [];
+
+    if (page < totalPages) {
+      quickReplies.push({
+        content_type: 'text',
+        title: 'Next Page',
+        payload: `help ${page + 1}`
+      });
     }
 
-    // Building quick replies for available commands
-    const quickReplies = commandsForPage.map((cmd) => ({
-      content_type: "text",
-      title: cmd.title,
-      payload: cmd.payload
-    }));
+    if (page > 1) {
+      quickReplies.push({
+        content_type: 'text',
+        title: 'Previous Page',
+        payload: `help ${page - 1}`
+      });
+    }
 
-    const helpMessage = `📋 | CMD List (Page ${page} of ${totalPages}):\n🏷 Total Commands: ${totalCommands}\n\nType "help [page]" to see another page, or "help all" to show all commands.\n\nIf you have any problems with the pagebot, contact the developer:\nFB Link: https://www.facebook.com/Churchill.Dev4100`;
-
-    // Send the message with quick replies for commands
     sendMessage(senderId, {
       text: helpMessage,
-      quick_replies: quickReplies,
-      buttons: [
-        {
-          type: "web_url",
-          url: "https://www.facebook.com/Churchill.Dev4100", // Link to developer's Facebook profile
-          title: "Contact Developer"
-        }
-      ]
+      quick_replies: quickReplies
     }, pageAccessToken);
   }
 };
+                                 

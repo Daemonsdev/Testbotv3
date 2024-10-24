@@ -2,9 +2,10 @@ const axios = require("axios");
 const { sendMessage } = require('../handles/sendMessage');
 
 module.exports = {
-  name: "gemini",
+  name: "vision",
   description: "Interact with Google Gemini for image recognition and text queries.",
-  author: "Churchill",
+  role: 1,
+  author: "heru",
 
   async execute(chilli, pogi, kalamansi, event) {
     const kalamansiPrompt = pogi.join(" ");
